@@ -1,0 +1,37 @@
+# Maintainer: 4cecoder <4cecoder@users.noreply.github.com>
+pkgname=imtools
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Fast image manipulation CLI tool written in Zig"
+arch=('x86_64' 'aarch64')
+url="https://github.com/4cecoder/imtools"
+license=('MIT')
+makedepends=('zig')
+optdepends=(
+    'ffmpeg: for convert-to-png and download commands'
+    'curl: for download and sort commands'
+    'ollama: for AI-powered image sorting'
+)
+source=("$pkgname-$pkgver.tar.gz::https://github.com/4cecoder/imtools/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "$pkgname-$pkgver"
+    zig build -Doptimize=ReleaseSafe
+}
+
+check() {
+    cd "$pkgname-$pkgver"
+    ./zig-out/bin/imtools help
+}
+
+package() {
+    cd "$pkgname-$pkgver"
+    install -Dm755 zig-out/bin/imtools "$pkgdir/usr/bin/imtools"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+
+    # Install documentation
+    install -d "$pkgdir/usr/share/doc/$pkgname/docs"
+    cp -r docs/* "$pkgdir/usr/share/doc/$pkgname/docs/"
+}

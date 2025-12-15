@@ -1,57 +1,103 @@
 # Packaging Guide
 
-How to package imtools for various Linux distributions and systems.
+Complete guide to packaging imtools for all major platforms and package managers.
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Gentoo (Ebuild)](#gentoo-ebuild)
-- [Arch Linux (PKGBUILD)](#arch-linux-pkgbuild)
-- [Debian/Ubuntu (.deb)](#debianubuntu-deb)
-- [Fedora/RHEL (RPM)](#fedorarhel-rpm)
-- [Nix (Flake)](#nix-flake)
-- [Homebrew (macOS/Linux)](#homebrew-macoslinux)
-- [AppImage](#appimage)
-- [Static Binary Distribution](#static-binary-distribution)
+- [Package Files Location](#package-files-location)
+- [Linux Package Managers](#linux-package-managers)
+  - [Gentoo (Portage)](#gentoo-portage)
+  - [Arch Linux (AUR)](#arch-linux-aur)
+  - [Debian/Ubuntu (apt)](#debianubuntu-apt)
+  - [Fedora/RHEL (dnf/yum)](#fedorarhel-dnfyum)
+  - [Alpine (apk)](#alpine-apk)
+  - [NixOS](#nixos)
+- [Universal Linux Packages](#universal-linux-packages)
+  - [Flatpak](#flatpak)
+  - [Snap](#snap)
+  - [AppImage](#appimage)
+- [macOS](#macos)
+  - [Homebrew](#homebrew)
+- [Windows](#windows)
+  - [Scoop](#scoop)
+  - [Chocolatey](#chocolatey)
+- [Static Binary Releases](#static-binary-releases)
+- [GitHub Actions CI/CD](#github-actions-cicd)
 - [Packaging Checklist](#packaging-checklist)
 
 ---
 
 ## Overview
 
-imtools is designed to be easy to package:
+imtools is designed for easy packaging:
 
-- **Single source file** - Just `src/main.zig` and `build.zig`
-- **No runtime dependencies** - Core functionality is self-contained
-- **Optional dependencies** - ffmpeg, curl, ollama for specific features
-- **Cross-platform** - Zig handles cross-compilation
+| Property | Value |
+|----------|-------|
+| Source files | `src/main.zig`, `build.zig` |
+| Build system | Zig (single command) |
+| Runtime deps | None (core), ffmpeg/curl/ollama (optional) |
+| License | MIT |
+| Architectures | x86_64, aarch64 |
 
-### Build Requirements
-
-| Requirement | Version | Notes |
-|-------------|---------|-------|
-| Zig | 0.13+ | Build-time only |
-
-### Optional Runtime Dependencies
-
-| Package | Features |
-|---------|----------|
-| ffmpeg | `convert-to-png`, `download` |
-| curl | `download`, `sort` |
-| ollama | `sort` |
+All packaging files are in the `packaging/` directory.
 
 ---
 
-## Gentoo (Ebuild)
+## Package Files Location
 
-Two ebuilds are provided:
+```
+packaging/
+├── gentoo/
+│   ├── imtools-1.0.0.ebuild
+│   ├── imtools-9999.ebuild
+│   └── README.md
+├── aur/
+│   └── PKGBUILD
+├── debian/
+│   ├── debian/
+│   │   ├── control
+│   │   ├── rules
+│   │   ├── changelog
+│   │   ├── copyright
+│   │   └── compat
+│   └── build-deb.sh
+├── rpm/
+│   └── imtools.spec
+├── alpine/
+│   └── APKBUILD
+├── nix/
+│   ├── flake.nix
+│   └── default.nix
+├── flatpak/
+│   └── io.github._4cecoder.imtools.yml
+├── snap/
+│   └── snapcraft.yaml
+├── appimage/
+│   └── build-appimage.sh
+├── homebrew/
+│   └── imtools.rb
+├── scoop/
+│   └── imtools.json
+└── chocolatey/
+    ├── imtools.nuspec
+    └── tools/
+        ├── chocolateyinstall.ps1
+        └── chocolateyuninstall.ps1
+```
 
-### Stable Ebuild (imtools-1.0.0.ebuild)
+---
 
-For tagged releases. Place in your local overlay:
+## Linux Package Managers
+
+### Gentoo (Portage)
+
+**Files:** `packaging/gentoo/`
+
+#### Quick Install
 
 ```bash
-# Create overlay structure (if not exists)
+# Create local overlay (one-time setup)
 sudo mkdir -p /var/db/repos/local/{metadata,profiles,media-gfx/imtools}
 echo "local" | sudo tee /var/db/repos/local/profiles/repo_name
 echo "masters = gentoo" | sudo tee /var/db/repos/local/metadata/layout.conf
@@ -62,440 +108,325 @@ cat <<EOF | sudo tee /etc/portage/repos.conf/local.conf
 [local]
 location = /var/db/repos/local
 EOF
-```
 
-**Ebuild content:**
-
-```bash
-# /var/db/repos/local/media-gfx/imtools/imtools-1.0.0.ebuild
-
-# Copyright 2024 4cecoder
-# Distributed under the terms of the MIT License
-
-EAPI=8
-
-DESCRIPTION="Fast image manipulation CLI tool written in Zig"
-HOMEPAGE="https://github.com/4cecoder/imtools"
-SRC_URI="https://github.com/4cecoder/imtools/archive/v${PV}.tar.gz -> ${P}.tar.gz"
-
-LICENSE="MIT"
-SLOT="0"
-KEYWORDS="~amd64 ~x86 ~arm64"
-IUSE="+ffmpeg +curl ollama"
-
-BDEPEND="dev-lang/zig"
-RDEPEND="
-    ffmpeg? ( media-video/ffmpeg )
-    curl? ( net-misc/curl )
-    ollama? ( app-misc/ollama )
-"
-
-src_compile() {
-    zig build -Doptimize=ReleaseSafe || die "Build failed"
-}
-
-src_install() {
-    dobin zig-out/bin/imtools
-    dodoc README.md
-    dodoc -r docs/
-}
-```
-
-**Installation:**
-
-```bash
-# Copy ebuild to overlay
-sudo cp imtools-1.0.0.ebuild /var/db/repos/local/media-gfx/imtools/
-
-# Generate manifest
+# Copy and install stable ebuild
+sudo cp packaging/gentoo/imtools-1.0.0.ebuild /var/db/repos/local/media-gfx/imtools/
 cd /var/db/repos/local/media-gfx/imtools
 sudo ebuild imtools-1.0.0.ebuild manifest
-
-# Install
 sudo emerge --ask media-gfx/imtools
 ```
 
-### Live Ebuild (imtools-9999.ebuild)
+#### USE Flags
 
-For git master:
+| Flag | Default | Description |
+|------|---------|-------------|
+| `ffmpeg` | Yes | convert-to-png, download |
+| `curl` | Yes | download, sort |
+| `ollama` | No | AI sort |
 
-```bash
-# Copyright 2024 4cecoder
-# Distributed under the terms of the MIT License
-
-EAPI=8
-
-inherit git-r3
-
-DESCRIPTION="Fast image manipulation CLI tool written in Zig"
-HOMEPAGE="https://github.com/4cecoder/imtools"
-EGIT_REPO_URI="https://github.com/4cecoder/imtools.git"
-
-LICENSE="MIT"
-SLOT="0"
-KEYWORDS=""
-IUSE="+ffmpeg +curl ollama"
-
-BDEPEND="dev-lang/zig"
-RDEPEND="
-    ffmpeg? ( media-video/ffmpeg )
-    curl? ( net-misc/curl )
-    ollama? ( app-misc/ollama )
-"
-
-src_compile() {
-    zig build -Doptimize=ReleaseSafe || die "Build failed"
-}
-
-src_install() {
-    dobin zig-out/bin/imtools
-    dodoc README.md
-    insinto /usr/share/doc/${PF}
-    doins -r docs/
-}
-```
+See `packaging/gentoo/README.md` for detailed instructions.
 
 ---
 
-## Arch Linux (PKGBUILD)
+### Arch Linux (AUR)
 
-Create `PKGBUILD`:
+**Files:** `packaging/aur/PKGBUILD`
 
-```bash
-# Maintainer: Your Name <your@email.com>
-pkgname=imtools
-pkgver=1.0.0
-pkgrel=1
-pkgdesc="Fast image manipulation CLI tool written in Zig"
-arch=('x86_64' 'aarch64')
-url="https://github.com/4cecoder/imtools"
-license=('MIT')
-makedepends=('zig')
-optdepends=(
-    'ffmpeg: for convert-to-png and download commands'
-    'curl: for download and sort commands'
-    'ollama: for AI-powered image sorting'
-)
-source=("$pkgname-$pkgver.tar.gz::https://github.com/4cecoder/imtools/archive/v$pkgver.tar.gz")
-sha256sums=('SKIP')  # Replace with actual checksum
-
-build() {
-    cd "$pkgname-$pkgver"
-    zig build -Doptimize=ReleaseSafe
-}
-
-package() {
-    cd "$pkgname-$pkgver"
-    install -Dm755 zig-out/bin/imtools "$pkgdir/usr/bin/imtools"
-    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-    install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
-
-    # Install docs
-    install -d "$pkgdir/usr/share/doc/$pkgname/docs"
-    cp -r docs/* "$pkgdir/usr/share/doc/$pkgname/docs/"
-}
-```
-
-**Build and install:**
+#### Build Locally
 
 ```bash
+cd packaging/aur
 makepkg -si
 ```
 
-**Submit to AUR:**
+#### Submit to AUR
 
 ```bash
-# Create .SRCINFO
+# Generate .SRCINFO
 makepkg --printsrcinfo > .SRCINFO
 
-# Push to AUR
-git clone ssh://aur@aur.archlinux.org/imtools.git
-cp PKGBUILD .SRCINFO imtools/
-cd imtools
-git add PKGBUILD .SRCINFO
-git commit -m "Initial upload"
-git push
+# Clone AUR repo and push
+git clone ssh://aur@aur.archlinux.org/imtools.git aur-repo
+cp PKGBUILD .SRCINFO aur-repo/
+cd aur-repo
+git add -A && git commit -m "Initial upload" && git push
 ```
 
 ---
 
-## Debian/Ubuntu (.deb)
+### Debian/Ubuntu (apt)
 
-### Using checkinstall (Quick)
+**Files:** `packaging/debian/`
 
-```bash
-git clone https://github.com/4cecoder/imtools.git
-cd imtools
-zig build -Doptimize=ReleaseSafe
-sudo checkinstall --pkgname=imtools --pkgversion=1.0.0 \
-    --pakdir=. --backup=no --install=no \
-    cp zig-out/bin/imtools /usr/local/bin/
-```
-
-### Proper Debian Package
-
-Create package structure:
+#### Build .deb Package
 
 ```bash
-mkdir -p imtools-1.0.0/DEBIAN
-mkdir -p imtools-1.0.0/usr/bin
-mkdir -p imtools-1.0.0/usr/share/doc/imtools
+cd packaging/debian
+./build-deb.sh
+
+# Install
+sudo dpkg -i ../build-deb/imtools_1.0.0-1_amd64.deb
 ```
 
-**DEBIAN/control:**
+#### Add to PPA (Ubuntu)
 
-```
-Package: imtools
-Version: 1.0.0
-Section: graphics
-Priority: optional
-Architecture: amd64
-Depends:
-Recommends: ffmpeg, curl
-Suggests: ollama
-Maintainer: Your Name <your@email.com>
-Description: Fast image manipulation CLI tool
- A Zig-based CLI tool for wallpaper and image management.
- Features include duplicate detection, format conversion,
- and AI-powered image sorting via Ollama.
-```
-
-**Build:**
-
-```bash
-# Build binary
-zig build -Doptimize=ReleaseSafe
-
-# Copy files
-cp zig-out/bin/imtools imtools-1.0.0/usr/bin/
-cp README.md LICENSE imtools-1.0.0/usr/share/doc/imtools/
-cp -r docs imtools-1.0.0/usr/share/doc/imtools/
-
-# Set permissions
-chmod 755 imtools-1.0.0/usr/bin/imtools
-
-# Build package
-dpkg-deb --build imtools-1.0.0
-```
+1. Create a Launchpad account
+2. Set up a PPA
+3. Upload source package with `dput`
 
 ---
 
-## Fedora/RHEL (RPM)
+### Fedora/RHEL (dnf/yum)
 
-Create `imtools.spec`:
+**Files:** `packaging/rpm/imtools.spec`
 
-```spec
-Name:           imtools
-Version:        1.0.0
-Release:        1%{?dist}
-Summary:        Fast image manipulation CLI tool written in Zig
-
-License:        MIT
-URL:            https://github.com/4cecoder/imtools
-Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
-
-BuildRequires:  zig >= 0.13
-
-Recommends:     ffmpeg
-Recommends:     curl
-Suggests:       ollama
-
-%description
-A fast Zig-based CLI tool for wallpaper and image management.
-Features duplicate detection, batch format conversion, wallpaper
-downloading, and AI-powered image sorting via Ollama.
-
-%prep
-%autosetup
-
-%build
-zig build -Doptimize=ReleaseSafe
-
-%install
-install -Dm755 zig-out/bin/imtools %{buildroot}%{_bindir}/imtools
-install -Dm644 LICENSE %{buildroot}%{_licensedir}/%{name}/LICENSE
-install -Dm644 README.md %{buildroot}%{_docdir}/%{name}/README.md
-cp -r docs %{buildroot}%{_docdir}/%{name}/
-
-%files
-%license LICENSE
-%doc README.md docs/
-%{_bindir}/imtools
-
-%changelog
-* Sun Dec 15 2024 Your Name <your@email.com> - 1.0.0-1
-- Initial package
-```
-
-**Build:**
+#### Build RPM
 
 ```bash
-rpmbuild -ba imtools.spec
+# Install build tools
+sudo dnf install rpm-build rpmdevtools
+
+# Setup rpmbuild directories
+rpmdev-setuptree
+
+# Copy spec and build
+cp packaging/rpm/imtools.spec ~/rpmbuild/SPECS/
+spectool -g -R ~/rpmbuild/SPECS/imtools.spec
+rpmbuild -ba ~/rpmbuild/SPECS/imtools.spec
 ```
+
+#### Submit to Fedora/EPEL
+
+See [Fedora Package Review Process](https://docs.fedoraproject.org/en-US/package-maintainers/Package_Review_Process/).
 
 ---
 
-## Nix (Flake)
+### Alpine (apk)
 
-Create `flake.nix`:
+**Files:** `packaging/alpine/APKBUILD`
+
+#### Build Package
+
+```bash
+cd packaging/alpine
+abuild -r
+```
+
+#### Submit to Alpine
+
+See [Alpine Contributing Guide](https://wiki.alpinelinux.org/wiki/Creating_an_Alpine_package).
+
+---
+
+### NixOS
+
+**Files:** `packaging/nix/`
+
+#### Using Flake
+
+```bash
+# Build
+nix build github:4cecoder/imtools
+
+# Run directly
+nix run github:4cecoder/imtools -- help
+
+# Development shell
+nix develop github:4cecoder/imtools
+```
+
+#### Using default.nix
+
+```bash
+nix-build packaging/nix/default.nix
+./result/bin/imtools help
+```
+
+#### Add to NixOS Configuration
 
 ```nix
-{
-  description = "Fast image manipulation CLI tool written in Zig";
-
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
-    zig.url = "github:mitchellh/zig-overlay";
-  };
-
-  outputs = { self, nixpkgs, flake-utils, zig }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
-        zigPkg = zig.packages.${system}.master;
-      in
-      {
-        packages.default = pkgs.stdenv.mkDerivation {
-          pname = "imtools";
-          version = "1.0.0";
-
-          src = ./.;
-
-          nativeBuildInputs = [ zigPkg ];
-
-          buildPhase = ''
-            zig build -Doptimize=ReleaseSafe
-          '';
-
-          installPhase = ''
-            mkdir -p $out/bin
-            cp zig-out/bin/imtools $out/bin/
-          '';
-
-          meta = with pkgs.lib; {
-            description = "Fast image manipulation CLI tool";
-            homepage = "https://github.com/4cecoder/imtools";
-            license = licenses.mit;
-            platforms = platforms.linux ++ platforms.darwin;
-          };
-        };
-
-        devShells.default = pkgs.mkShell {
-          buildInputs = [ zigPkg pkgs.ffmpeg pkgs.curl ];
-        };
-      }
-    );
+# configuration.nix
+{ pkgs, ... }:
+let
+  imtools = pkgs.callPackage (builtins.fetchTarball {
+    url = "https://github.com/4cecoder/imtools/archive/v1.0.0.tar.gz";
+  } + "/packaging/nix/default.nix") {};
+in {
+  environment.systemPackages = [ imtools ];
 }
 ```
 
-**Usage:**
+---
+
+## Universal Linux Packages
+
+### Flatpak
+
+**Files:** `packaging/flatpak/io.github._4cecoder.imtools.yml`
+
+#### Build and Install
 
 ```bash
+# Install flatpak-builder
+sudo apt install flatpak-builder  # Debian/Ubuntu
+sudo dnf install flatpak-builder  # Fedora
+
 # Build
-nix build
+cd packaging/flatpak
+flatpak-builder --user --install --force-clean build-dir io.github._4cecoder.imtools.yml
 
 # Run
-nix run
+flatpak run io.github._4cecoder.imtools help
+```
 
-# Development shell
-nix develop
+#### Submit to Flathub
+
+See [Flathub Submission Guide](https://github.com/flathub/flathub/wiki/App-Submission).
+
+---
+
+### Snap
+
+**Files:** `packaging/snap/snapcraft.yaml`
+
+#### Build and Install
+
+```bash
+cd packaging/snap
+snapcraft
+
+# Install locally
+sudo snap install imtools_1.0.0_amd64.snap --dangerous
+
+# Run
+snap run imtools help
+```
+
+#### Submit to Snap Store
+
+```bash
+snapcraft login
+snapcraft upload imtools_1.0.0_amd64.snap
+snapcraft release imtools <revision> stable
 ```
 
 ---
 
-## Homebrew (macOS/Linux)
+### AppImage
 
-Create formula `imtools.rb`:
+**Files:** `packaging/appimage/build-appimage.sh`
 
-```ruby
-class Imtools < Formula
-  desc "Fast image manipulation CLI tool written in Zig"
-  homepage "https://github.com/4cecoder/imtools"
-  url "https://github.com/4cecoder/imtools/archive/v1.0.0.tar.gz"
-  sha256 "CHECKSUM_HERE"
-  license "MIT"
-
-  depends_on "zig" => :build
-
-  def install
-    system "zig", "build", "-Doptimize=ReleaseSafe"
-    bin.install "zig-out/bin/imtools"
-    doc.install "README.md"
-    doc.install Dir["docs/*"]
-  end
-
-  test do
-    system "#{bin}/imtools", "help"
-  end
-end
-```
-
-**Submit to Homebrew:**
+#### Build
 
 ```bash
-# Test locally
-brew install --build-from-source ./imtools.rb
+cd packaging/appimage
+./build-appimage.sh
 
-# Create tap
-# Push to github.com/yourusername/homebrew-tap
+# For ARM64
+./build-appimage.sh --arch aarch64
+
+# Run
+chmod +x ../build-appimage/imtools-1.0.0-x86_64.AppImage
+./imtools-1.0.0-x86_64.AppImage help
+```
+
+The script automatically:
+- Builds a static binary with musl
+- Creates AppDir structure
+- Downloads appimagetool if needed
+- Generates the AppImage
+
+---
+
+## macOS
+
+### Homebrew
+
+**Files:** `packaging/homebrew/imtools.rb`
+
+#### Install from Formula
+
+```bash
+brew install --build-from-source packaging/homebrew/imtools.rb
+```
+
+#### Create a Tap
+
+```bash
+# Create tap repository on GitHub: yourusername/homebrew-tap
+# Add formula
+mkdir -p Formula
+cp packaging/homebrew/imtools.rb Formula/
+
+# Users can then:
+brew tap yourusername/tap
+brew install imtools
+```
+
+#### Submit to homebrew-core
+
+See [Homebrew Formula Cookbook](https://docs.brew.sh/Formula-Cookbook).
+
+---
+
+## Windows
+
+### Scoop
+
+**Files:** `packaging/scoop/imtools.json`
+
+#### Install from Manifest
+
+```powershell
+scoop install https://raw.githubusercontent.com/4cecoder/imtools/main/packaging/scoop/imtools.json
+```
+
+#### Create a Bucket
+
+```bash
+# Create bucket repository on GitHub: yourusername/scoop-bucket
+# Add manifest
+cp packaging/scoop/imtools.json bucket/
+
+# Users can then:
+scoop bucket add yourusername https://github.com/yourusername/scoop-bucket
+scoop install imtools
 ```
 
 ---
 
-## AppImage
+### Chocolatey
 
-For portable Linux distribution:
+**Files:** `packaging/chocolatey/`
 
-```bash
-# Create AppDir structure
-mkdir -p AppDir/usr/bin
-mkdir -p AppDir/usr/share/applications
-mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+#### Build Package
 
-# Build
-zig build -Doptimize=ReleaseSafe
-cp zig-out/bin/imtools AppDir/usr/bin/
+```powershell
+cd packaging\chocolatey
+choco pack
 
-# Create .desktop file
-cat > AppDir/imtools.desktop <<EOF
-[Desktop Entry]
-Type=Application
-Name=imtools
-Exec=imtools
-Icon=imtools
-Categories=Graphics;
-Terminal=true
-EOF
-
-# Create AppRun
-cat > AppDir/AppRun <<EOF
-#!/bin/bash
-exec "\$APPDIR/usr/bin/imtools" "\$@"
-EOF
-chmod +x AppDir/AppRun
-
-# Build AppImage (requires appimagetool)
-ARCH=x86_64 appimagetool AppDir
+# Install locally
+choco install imtools -s .
 ```
+
+#### Submit to Chocolatey Community
+
+```powershell
+choco push imtools.1.0.0.nupkg --source https://push.chocolatey.org/
+```
+
+See [Chocolatey Package Creation](https://docs.chocolatey.org/en-us/create/create-packages).
 
 ---
 
-## Static Binary Distribution
+## Static Binary Releases
 
-Zig makes it easy to create fully static binaries:
+Zig makes cross-compilation easy. Build static binaries for releases:
 
 ```bash
-# Build static binary
+# Linux x86_64 (static with musl)
 zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-linux-musl
 
-# The binary in zig-out/bin/imtools is now fully static
-ldd zig-out/bin/imtools  # Should show "not a dynamic executable"
-```
-
-**Cross-compilation targets:**
-
-```bash
 # Linux ARM64
 zig build -Doptimize=ReleaseSafe -Dtarget=aarch64-linux-musl
 
@@ -509,57 +440,138 @@ zig build -Doptimize=ReleaseSafe -Dtarget=aarch64-macos
 zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-windows
 ```
 
+### Release Archive Structure
+
+```
+imtools-1.0.0-linux-x86_64.tar.gz
+├── imtools
+├── README.md
+├── LICENSE
+└── docs/
+    ├── installation.md
+    ├── commands.md
+    └── ...
+```
+
+---
+
+## GitHub Actions CI/CD
+
+Example workflow for automated releases:
+
+```yaml
+# .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-linux-musl
+            artifact: imtools-linux-x86_64
+          - os: ubuntu-latest
+            target: aarch64-linux-musl
+            artifact: imtools-linux-aarch64
+          - os: macos-latest
+            target: x86_64-macos
+            artifact: imtools-macos-x86_64
+          - os: macos-latest
+            target: aarch64-macos
+            artifact: imtools-macos-aarch64
+          - os: windows-latest
+            target: x86_64-windows
+            artifact: imtools-windows-x86_64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Build
+        run: zig build -Doptimize=ReleaseSafe -Dtarget=${{ matrix.target }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: zig-out/bin/imtools*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            imtools-linux-x86_64/*
+            imtools-linux-aarch64/*
+            imtools-macos-x86_64/*
+            imtools-macos-aarch64/*
+            imtools-windows-x86_64/*
+```
+
 ---
 
 ## Packaging Checklist
 
-When creating a package for a new distribution:
+When creating a new package:
 
 ### Required Files
 
-- [ ] Binary: `imtools` (or `imtools.exe` on Windows)
-- [ ] License: `LICENSE` (MIT)
-- [ ] Documentation: `README.md`
-- [ ] Detailed docs: `docs/` directory
+- [ ] Binary: `imtools` (or `imtools.exe`)
+- [ ] License: `LICENSE`
+- [ ] Docs: `README.md`, `docs/`
 
 ### Metadata
 
-- [ ] Package name: `imtools`
-- [ ] Version: Match git tag (e.g., `1.0.0`)
-- [ ] Description: "Fast image manipulation CLI tool written in Zig"
-- [ ] License: MIT
-- [ ] Homepage: https://github.com/4cecoder/imtools
-- [ ] Categories: Graphics, Utility, CLI
+| Field | Value |
+|-------|-------|
+| Name | `imtools` |
+| Version | `1.0.0` |
+| Description | Fast image manipulation CLI tool written in Zig |
+| License | MIT |
+| Homepage | https://github.com/4cecoder/imtools |
+| Categories | Graphics, Utility, CLI |
 
 ### Dependencies
 
-- [ ] Build: `zig >= 0.13`
-- [ ] Runtime (optional): `ffmpeg`, `curl`
-- [ ] Runtime (optional): `ollama`
-
-### Installation Paths
-
-| File | Typical Path |
-|------|--------------|
-| Binary | `/usr/bin/imtools` or `/usr/local/bin/imtools` |
-| License | `/usr/share/licenses/imtools/LICENSE` |
-| Docs | `/usr/share/doc/imtools/` |
+| Type | Package | Required For |
+|------|---------|--------------|
+| Build | zig >= 0.13 | All |
+| Runtime | ffmpeg | convert-to-png, download |
+| Runtime | curl | download, sort |
+| Runtime | ollama | sort |
 
 ### Testing
 
-After installation, verify:
+After packaging, verify:
 
 ```bash
-imtools help                    # Basic functionality
-imtools flatten --dry-run       # Directory operations
-imtools find-duplicates         # Hashing
-which ffmpeg && imtools convert-to-png --dry-run  # ffmpeg integration
+imtools help                     # Basic functionality
+imtools flatten --dry-run        # File operations
+imtools find-duplicates          # Hashing works
 ```
 
 ---
 
 ## Need Help?
 
-- Open an issue on [GitHub](https://github.com/4cecoder/imtools/issues)
-- Check existing packages for reference
-- See [Architecture Guide](architecture.md) for build details
+- [GitHub Issues](https://github.com/4cecoder/imtools/issues)
+- [Architecture Guide](architecture.md) - Build internals
+- [Installation Guide](installation.md) - End-user install docs

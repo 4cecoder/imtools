@@ -1,0 +1,7 @@
+imtools (1.0.0-1) unstable; urgency=medium
+
+  * Initial release.
+  * Features: flatten, find-duplicates, delete-portrait, remove-empty-dirs,
+    convert-to-png, download, sort
+
+ -- 4cecoder <4cecoder@users.noreply.github.com>  Sun, 15 Dec 2024 00:00:00 +0000

@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	zig build -Doptimize=ReleaseSafe
+
+override_dh_auto_install:
+	install -Dm755 zig-out/bin/imtools debian/imtools/usr/bin/imtools
+	install -Dm644 README.md debian/imtools/usr/share/doc/imtools/README.md
+	install -Dm644 LICENSE debian/imtools/usr/share/doc/imtools/LICENSE
+	install -d debian/imtools/usr/share/doc/imtools/docs
+	cp -r docs/* debian/imtools/usr/share/doc/imtools/docs/
+
+override_dh_auto_clean:
+	rm -rf zig-out .zig-cache

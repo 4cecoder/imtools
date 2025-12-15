@@ -1,0 +1,28 @@
+Source: imtools
+Section: graphics
+Priority: optional
+Maintainer: 4cecoder <4cecoder@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.0
+Homepage: https://github.com/4cecoder/imtools
+Vcs-Browser: https://github.com/4cecoder/imtools
+Vcs-Git: https://github.com/4cecoder/imtools.git
+Rules-Requires-Root: no
+
+Package: imtools
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: ffmpeg, curl
+Suggests: ollama
+Description: Fast image manipulation CLI tool written in Zig
+ A fast, standalone CLI tool for image and wallpaper management.
+ .
+ Features:
+  - Flatten nested image directories
+  - Find and remove duplicate images (SHA256)
+  - Delete portrait-oriented images
+  - Batch convert images to PNG
+  - Download wallpapers from wallhaven.cc
+  - AI-powered image sorting via Ollama
+ .
+ No runtime dependencies for core features.

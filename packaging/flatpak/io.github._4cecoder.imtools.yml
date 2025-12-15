@@ -1,0 +1,63 @@
+app-id: io.github._4cecoder.imtools
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+command: imtools
+
+finish-args:
+  # Filesystem access for image operations
+  - --filesystem=home
+  - --filesystem=/tmp
+  # Network for download and ollama commands
+  - --share=network
+
+modules:
+  # Zig compiler (build-only)
+  - name: zig
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 zig /app/bin/zig
+      - cp -r lib /app/lib
+    sources:
+      - type: archive
+        url: https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz
+        sha256: d45312e61ebcc48032b77bc4cf7fd6915c11fa16e4aad116b66c9f7a1e3d8cfe
+        only-arches:
+          - x86_64
+      - type: archive
+        url: https://ziglang.org/download/0.13.0/zig-linux-aarch64-0.13.0.tar.xz
+        sha256: 041ac42323837eb5624068acd8b00cd5177d53f5c2a284e164a3a2f91fc3bd32
+        only-arches:
+          - aarch64
+    cleanup:
+      - '*'
+
+  # imtools
+  - name: imtools
+    buildsystem: simple
+    build-commands:
+      - zig build -Doptimize=ReleaseSafe
+      - install -Dm755 zig-out/bin/imtools /app/bin/imtools
+    sources:
+      - type: git
+        url: https://github.com/4cecoder/imtools.git
+        tag: v1.0.0
+        # commit: REPLACE_WITH_COMMIT_HASH
+
+  # ffmpeg for convert-to-png and download commands
+  - name: ffmpeg
+    buildsystem: autotools
+    config-opts:
+      - --disable-doc
+      - --disable-ffplay
+      - --disable-ffprobe
+      - --enable-shared
+      - --disable-static
+    sources:
+      - type: archive
+        url: https://ffmpeg.org/releases/ffmpeg-6.1.tar.xz
+        sha256: 488c76e57dd9b3bee901f71d5c95eaf1db4a5a31fe46a28654e837144207c270
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+      - /share/ffmpeg
