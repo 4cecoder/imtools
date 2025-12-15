@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Build (Debug)
+        run: zig build
+
+      - name: Build (Release)
+        run: zig build -Doptimize=ReleaseSafe
+
+      - name: Test help command
+        shell: bash
+        run: ./zig-out/bin/imtools help
+
+      - name: Test dry-run commands
+        shell: bash
+        run: |
+          mkdir -p test-dir
+          cd test-dir
+          ../zig-out/bin/imtools flatten --dry-run
+          ../zig-out/bin/imtools find-duplicates
+          ../zig-out/bin/imtools delete-portrait --dry-run
+          ../zig-out/bin/imtools remove-empty-dirs --dry-run
+
+  lint:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Check formatting
+        run: zig fmt --check src/main.zig

@@ -1,0 +1,146 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-linux-musl
+            artifact: imtools
+            archive: tar.gz
+          - name: linux-aarch64
+            os: ubuntu-latest
+            target: aarch64-linux-musl
+            artifact: imtools
+            archive: tar.gz
+          - name: macos-x86_64
+            os: macos-latest
+            target: x86_64-macos
+            artifact: imtools
+            archive: tar.gz
+          - name: macos-aarch64
+            os: macos-latest
+            target: aarch64-macos
+            artifact: imtools
+            archive: tar.gz
+          - name: windows-x86_64
+            os: windows-latest
+            target: x86_64-windows
+            artifact: imtools.exe
+            archive: zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Build
+        run: zig build -Doptimize=ReleaseSafe -Dtarget=${{ matrix.target }}
+
+      - name: Create release directory
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          mkdir -p release
+          cp zig-out/bin/${{ matrix.artifact }} release/
+          cp README.md LICENSE release/
+          cp -r docs release/
+
+      - name: Create tarball (Unix)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          cd release
+          tar -czvf ../imtools-${VERSION}-${{ matrix.name }}.tar.gz *
+
+      - name: Create zip (Windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $VERSION = $env:GITHUB_REF -replace 'refs/tags/v', ''
+          Compress-Archive -Path release/* -DestinationPath "imtools-${VERSION}-${{ matrix.name }}.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imtools-${{ matrix.name }}
+          path: imtools-*.${{ matrix.archive }}
+
+  # Build AppImage
+  appimage:
+    name: Build AppImage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Build AppImage
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          cd packaging/appimage
+          VERSION=$VERSION ./build-appimage.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: imtools-appimage
+          path: build-appimage/*.AppImage
+
+  release:
+    name: Create Release
+    needs: [build, appimage]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          find . -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.AppImage" \) -exec sha256sum {} \; > checksums.txt
+          cat checksums.txt
+
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: imtools ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
+            artifacts/**/*.AppImage
+            artifacts/checksums.txt

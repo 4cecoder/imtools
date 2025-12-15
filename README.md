@@ -1,4 +1,19 @@
+<div align="center">
+
 # imtools
+
+[![CI](https://github.com/4cecoder/imtools/actions/workflows/ci.yml/badge.svg)](https://github.com/4cecoder/imtools/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/4cecoder/imtools?include_prereleases)](https://github.com/4cecoder/imtools/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Zig](https://img.shields.io/badge/Zig-0.13+-f7a41d?logo=zig&logoColor=white)](https://ziglang.org)
+
+**Fast image manipulation CLI written in Zig**
+
+[Features](#features) • [Install](#quick-start) • [Commands](#commands) • [Docs](#documentation)
+
+</div>
+
+---
 
 A fast, standalone CLI tool for image and wallpaper management. Written in Zig with zero runtime dependencies for core operations.
 

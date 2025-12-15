@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00d9ff"/>
+      <stop offset="100%" style="stop-color:#00ff88"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="64" fill="url(#bgGrad)"/>
+
+  <!-- Image frame (stylized) -->
+  <rect x="80" y="120" width="352" height="272" rx="16" fill="none" stroke="url(#accentGrad)" stroke-width="8"/>
+
+  <!-- Mountain silhouette (representing images/wallpapers) -->
+  <path d="M96 360 L180 260 L240 320 L320 200 L416 360 Z" fill="#2d4a6f" opacity="0.6"/>
+  <path d="M96 360 L200 280 L280 340 L360 240 L416 360 Z" fill="url(#accentGrad)" opacity="0.3"/>
+
+  <!-- Sun/circle -->
+  <circle cx="360" cy="180" r="40" fill="url(#accentGrad)" opacity="0.8"/>
+
+  <!-- Tool icon overlay (wrench/gear hint) -->
+  <g transform="translate(340, 340)">
+    <circle cx="48" cy="48" r="56" fill="#1a1a2e" stroke="url(#accentGrad)" stroke-width="4"/>
+    <path d="M32 32 L64 64 M64 32 L32 64" stroke="url(#accentGrad)" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="48" cy="48" r="16" fill="none" stroke="url(#accentGrad)" stroke-width="4"/>
+  </g>
+
+  <!-- "im" text -->
+  <text x="130" y="460" font-family="JetBrains Mono, Consolas, monospace" font-size="72" font-weight="bold" fill="url(#accentGrad)">im</text>
+  <text x="235" y="460" font-family="JetBrains Mono, Consolas, monospace" font-size="72" font-weight="bold" fill="#ffffff" opacity="0.9">tools</text>
+</svg>
