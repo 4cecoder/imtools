@@ -1,26 +1,23 @@
 # Copyright 2024 4cecoder
-# Distributed under the terms of the GNU General Public License v2
+# Distributed under the terms of the MIT License
 
 EAPI=8
 
 DESCRIPTION="Fast image manipulation CLI tool written in Zig"
 HOMEPAGE="https://github.com/4cecoder/imtools"
-
-SRC_URI=""
-KEYWORDS="~amd64 ~x86"
+SRC_URI="https://github.com/4cecoder/imtools/archive/v${PV}.tar.gz -> ${P}.tar.gz"
 
 LICENSE="MIT"
 SLOT="0"
-IUSE="ffmpeg"
+KEYWORDS="~amd64 ~x86 ~arm64"
+IUSE="+ffmpeg +curl ollama"
 
-# Zig must be installed manually or via portage
-# BDEPEND="dev-lang/zig"
-RDEPEND="ffmpeg? ( media-video/ffmpeg )"
-
-src_unpack() {
-	mkdir -p "${S}" || die
-	cp -r "/opt/bytecats/wallpapers/wallpapers/imtools"/{build.zig,src,README.md} "${S}/" || die
-}
+BDEPEND="dev-lang/zig"
+RDEPEND="
+	ffmpeg? ( media-video/ffmpeg )
+	curl? ( net-misc/curl )
+	ollama? ( app-misc/ollama )
+"
 
 src_compile() {
 	zig build -Doptimize=ReleaseSafe || die "zig build failed"
@@ -28,5 +25,6 @@ src_compile() {
 
 src_install() {
 	dobin zig-out/bin/imtools
-	dodoc README.md
+	dodoc README.md LICENSE
+	dodoc -r docs
 }

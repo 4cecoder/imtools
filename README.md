@@ -1,115 +1,162 @@
-# imtools - Image Manipulation Tools
+# imtools
 
-A fast, standalone image manipulation CLI tool written in Zig that replaces ImageMagick for common wallpaper management tasks.
+A fast, standalone CLI tool for image and wallpaper management. Written in Zig with zero runtime dependencies for core operations.
+
+```bash
+# Flatten nested folders
+imtools flatten
+
+# Find and remove duplicates
+imtools find-duplicates --delete
+
+# AI-powered sorting (via Ollama)
+imtools sort --categories "nature,anime,abstract,city"
+```
+
+## Table of Contents
+
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Commands](#commands)
+- [Documentation](#documentation)
+- [Why Zig?](#why-zig)
+- [License](#license)
+
+---
 
 ## Features
 
-**No external dependencies** - All image format parsing is built-in:
-- PNG, JPEG, GIF, BMP, WebP dimension detection
-- SHA256-based duplicate detection
-- File system operations
+| Feature | Description |
+|---------|-------------|
+| **Flatten** | Move all images from nested subdirectories to one place |
+| **Duplicates** | Find identical images via SHA256 hash comparison |
+| **Portrait Filter** | Delete portrait-oriented images (height > width) |
+| **Format Convert** | Batch convert images to PNG via ffmpeg |
+| **Download** | Fetch wallpapers from wallhaven.cc |
+| **AI Sort** | Categorize images using local Ollama vision models |
 
-## Installation
+**Supported formats:** PNG, JPEG, GIF, BMP, WebP, TIFF
 
-### Gentoo (Portage)
+---
 
-Set up a local overlay and install via emerge:
+## Quick Start
 
-```bash
-# Create local overlay structure
-doas mkdir -p /var/db/repos/local/{metadata,profiles,media-gfx/imtools}
-echo "local" | doas tee /var/db/repos/local/profiles/repo_name
-echo "masters = gentoo" | doas tee /var/db/repos/local/metadata/layout.conf
-
-# Register the overlay
-doas mkdir -p /etc/portage/repos.conf
-cat <<EOF | doas tee /etc/portage/repos.conf/local.conf
-[local]
-location = /var/db/repos/local
-EOF
-
-# Copy the ebuild
-doas cp imtools-1.0.0.ebuild /var/db/repos/local/media-gfx/imtools/
-
-# Generate manifest and install
-cd /var/db/repos/local/media-gfx/imtools
-doas ebuild imtools-1.0.0.ebuild manifest
-doas emerge --ask media-gfx/imtools
-```
-
-> **Note:** Replace `doas` with `sudo` if that's what you use.
-
-### Manual Installation
-
-Requires Zig 0.13 or later:
+### Install
 
 ```bash
-# Build
+# Requires Zig 0.13+
+git clone https://github.com/4cecoder/imtools.git
+cd imtools
 zig build -Doptimize=ReleaseSafe
-
-# Install to ~/.local/bin (user)
-cp zig-out/bin/imtools ~/.local/bin/
-
-# Or install system-wide
-doas cp zig-out/bin/imtools /usr/local/bin/
+sudo cp zig-out/bin/imtools /usr/local/bin/
 ```
+
+See [Installation Guide](docs/installation.md) for platform-specific instructions.
+
+### Basic Usage
+
+```bash
+cd ~/wallpapers
+
+# Preview changes first (always safe)
+imtools flatten --dry-run
+imtools delete-portrait --dry-run
+
+# Execute
+imtools flatten
+imtools find-duplicates --delete
+imtools remove-empty-dirs
+```
+
+---
 
 ## Commands
 
-### flatten
-Move all images from subdirectories to current directory.
+| Command | Description | Requires |
+|---------|-------------|----------|
+| `flatten` | Move images from subdirs to current dir | - |
+| `find-duplicates` | Find duplicate images by SHA256 | - |
+| `delete-portrait` | Delete portrait images | - |
+| `remove-empty-dirs` | Remove empty directories | - |
+| `convert-to-png` | Convert images to PNG | ffmpeg |
+| `download` | Download from wallhaven.cc | curl, ffmpeg |
+| `sort` | AI categorization | curl, ollama |
+
+### Examples
 
 ```bash
-imtools flatten [--dry-run]
+# Download 50 nature wallpapers
+imtools download --query "nature landscape" --limit 50
+
+# Convert all to PNG, delete originals
+imtools convert-to-png --delete
+
+# AI sort with custom categories
+imtools sort --categories "mountains,ocean,forest,anime,abstract"
+
+# AI sort with specific model
+imtools sort --model llava:7b --workers 4
 ```
 
-### find-duplicates
-Find duplicate images by comparing SHA256 hashes.
+Full command reference: [docs/commands.md](docs/commands.md)
 
-```bash
-imtools find-duplicates [--delete]
-```
+---
 
-With `--delete`, prompts interactively to delete duplicates (keeps first occurrence).
+## Documentation
 
-### delete-portrait
-Delete all portrait orientation images (height > width).
+| Document | Description |
+|----------|-------------|
+| [Installation](docs/installation.md) | Setup for Linux, macOS, Windows |
+| [Commands](docs/commands.md) | Complete command reference with examples |
+| [AI Sorting](docs/ai-sorting.md) | Ollama setup, model selection, tuning |
+| [Architecture](docs/architecture.md) | Code structure, contributing guide |
+| [Packaging](docs/packaging.md) | Create packages for any distro |
 
-```bash
-imtools delete-portrait [--dry-run]
-```
+---
 
-### remove-empty-dirs
-Recursively remove empty directories.
+## Why Zig?
 
-```bash
-imtools remove-empty-dirs [--dry-run]
-```
+- **Fast startup** - No runtime, no GC, instant execution
+- **Single binary** - No dependencies to manage
+- **Cross-compile** - Build for any platform from any platform
+- **Low memory** - Efficient image header parsing without loading full images
+- **Easy to read** - Simple, explicit code
 
-### convert-to-png
-Convert all images to PNG format. Requires `ffmpeg`.
+---
 
-```bash
-imtools convert-to-png [--dry-run]
-imtools convert-to-png --delete  # delete originals after conversion
-```
+## Optional Dependencies
 
-## Supported Image Formats
+Core commands (`flatten`, `find-duplicates`, `delete-portrait`, `remove-empty-dirs`) need nothing but the binary.
 
-- PNG
-- JPEG/JPG
-- GIF
-- BMP
-- WebP
-- TIFF (basic support)
+For extended features:
 
-## Performance
+| Dependency | Commands | Install |
+|------------|----------|---------|
+| ffmpeg | `convert-to-png`, `download` | `apt install ffmpeg` |
+| curl | `download`, `sort` | Usually pre-installed |
+| ollama | `sort` | [ollama.ai](https://ollama.ai) |
 
-Built in Zig for:
-- Fast startup (no runtime overhead)
-- Low memory usage
-- Native performance
+---
 
 ## License
 
-MIT
+MIT - see [LICENSE](LICENSE)
+
+---
+
+## Contributing
+
+Contributions welcome! See [Architecture Guide](docs/architecture.md) for:
+- Code structure overview
+- Adding new commands
+- Adding image format support
+- Testing guidelines
+
+---
+
+## Links
+
+- [GitHub](https://github.com/4cecoder/imtools)
+- [Zig Language](https://ziglang.org)
+- [Ollama](https://ollama.ai)
+- [wallhaven.cc](https://wallhaven.cc)
